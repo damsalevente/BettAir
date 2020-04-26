@@ -9,7 +9,8 @@ We measure CO2, TVOC, Temperature, and light
 
 A little arduiono mkr will send data to the server, which will aggregate store them for later analysation
 
-![alt text](arch.pdf)
+[Architecture](arch.pdf)
+
 Used protocol: mqtt
 Server: nodejs/python
 Mobile client: java
