@@ -3,6 +3,10 @@
 #include <ArduinoJson.h>
 #include <WiFi101.h>
 #include "Adafruit_CCS811.h"
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+
 
 
 typedef struct rgb
@@ -30,25 +34,29 @@ float temperature_value;
 float light_value;
 rgb rgb_value;
 
-char _SSID[] = "my secret ssid "; /* for wifi connection check */
-char _PASSWORD[]= "my secret password";
+const char ssid[] = "titkos"; // WiFI ssid
+const char pass[] = "titkos"; //WiFI password
+const char mqttServer[] = "titkos.mosquitto.org"; // broker, with shiftr.io it's "broker.shiftr.io"
+const int mqttServerPort = 1883; // broker mqtt port
+const char key[] = "titkos"; // broker key
+const char secret[] = "titkos"; // broker secret
+const char device[] = "titkos"; // broker device identifier
+char _SSID[] = "titkos"; /* for wifi connection check */
+char _PASSWORD[]= "titkos";
+static char sbuf[256]; /* json string */
 /* end variables */
 
 /* included module classes */
-WiFiSSLClient ipCloudStack; 
-MQTTClient mqttCloudClient; 
+WiFiClient net;
+
+PubSubClient mqttClient(net);
+
 Adafruit_CCS811 ccs; /* co2 sensor */
 /* end included module classes */
 
 
 // the setup function runs once when you press reset or power the board
 void setup() {
-  char mqttCloudServer[]     = "api.artik.cloud"; 
-  int  mqttCloudPort         = 8883; 
-  char mqttCloudClientName[] = "ARTIK-Arduino"; 
-  char mqttCloudUsername[]   = "[device-id]";  
-  char mqttCloudPassword[]   = "[device-token]";  
-  char mqttCloudDataOut[]    = "/v1.1/messages/[device-id]";  
   /* Wifi Setting */
   WiFi.begin(_SSID, _PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
@@ -59,8 +67,15 @@ void setup() {
   Serial.println("WiFi connected");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-  
+
+  mqttClient.setServer(mqttServer,1883); /* set server name and port */
+  /* connectt to server with some random ID */
+  if(mqttClient.connect("MyClientID"))
+  {
+    Serial.println("Connection established, system working");
+  }
   /* Co2 sensor Setting */
+
   if(!ccs.begin())
   {
   Serial.println("Failed to start sensor! Please check wiring.");
@@ -74,7 +89,7 @@ void setup() {
   pinMode(temperature_pin, INPUT);
 }
 
-int  generate_ti_stamp(float * ti)
+int generate_ti_stamp(float * ti)
 {
   (*ti)++;
   return 0;
@@ -140,6 +155,18 @@ int read_data(float *ti, float *temp, float *co2,float *tvoc, float *light)
   return errorcode;
 }
 
+void send_to_server()
+{
+  DynamicJsonDocument datapair(256);
+  datapair["temperature"] = temperature_value;
+  datapair["co2"] = co2_value;
+  datapair["tvoc"] = tvoc_value;
+  datapair["light"] = light_value;
+  datapair["total_value"] = co2_value;
+  serializeJson(datapair,sbuf);
+  mqttClient.publish("/topic/bettair", sbuf);
+}
+
 void print_values()
 {
   Serial.println("Timestamp:");
@@ -153,9 +180,14 @@ void print_values()
   Serial.println("light");
   Serial.println(light_value);
 }
+
 // the loop function runs over and over again forever
 void loop() {
+
+  mqttClient.loop();
   read_data(&timestamp_value, &temperature_value, &co2_value,&tvoc_value, &light_value); 
   print_values();
-  delay(500);
+  send_to_server();
+  Serial.println("And now we wait for the next one");
+  delay(4000);
 }

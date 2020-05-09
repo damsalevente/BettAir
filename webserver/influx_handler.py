@@ -12,25 +12,14 @@ bucket = 'mybucket'
 org = '18d7dd6618fbcd6d'
 
 
-def json_to_point(data):
-    """
-    Enrich data with header information
-    """
-    # validate 
-    if 'kind' not in data.keys():
-        return None
-    kind = data['kind']
-    point = Point(kind).field(data['key'],data['value']).time(time=datetime.utcnow())
-    return point 
 
-
-def send_data(data):
+def send_data(what, value):
     """ 
     this function sends the data as json, and checks if it was succesfull 
     """
     client = InfluxDBClient(url=influx_cloud_url, token=influx_cloud_token)
     try:
-        point = json_to_point(data)
+        point = Point("measurement").field(what,value).time(time=datetime.utcnow())
 
         # if data is incorrect, don't send anything
         if point is None:
@@ -50,36 +39,33 @@ def send_data(data):
         print()
         print()
 
-        """
-        Query written data
-        """
-        query = f'from(bucket: "{bucket}") |> range(start: -1d)  '
-        print(f'Querying from InfluxDB cloud: "{query}" ...')
-        print()
-
-        query_api = client.query_api()
-        tables = query_api.query(query=query, org=org)
-
-        for table in tables:
-            for row in table.records:
-                print(f'{row.values["_time"]}: '
-                      f'{row.values["_value"]} °C'
-                      )
-
-        print()
-        print('success')
-        return 0
 
     except Exception as e:
         print(e)
     finally:
         client.close()
-        return -1 
 
 if __name__ == "__main__":
 
     send_data({"kind":"temparature", "key":"CAT", "value":0})
-    send_data({"kind":"temparature", "key":"CAT", "value":1})
-    send_data({"kind":"temparature", "key":"CAT", "value":5})
-    send_data({"kind":"temparature", "key":"CAT", "value":8})
-    send_data({"kind":"temparature", "key":"CAT", "value":600})
+    send_data({"kind":"co2", "key":"CAT", "value":1})
+    send_data({"kind":"tvoc", "key":"CAT", "value":5})
+    send_data({"kind":"co2", "key":"CAT", "value":8})
+    send_data({"kind":"light", "key":"CAT", "value":600})
+
+    send_data({"kind":"temparature", "key":"CAT", "value":0})
+    send_data({"kind":"co2", "key":"CAT", "value":1})
+    send_data({"kind":"tvoc", "key":"CAT", "value":5})
+    send_data({"kind":"co2", "key":"CAT", "value":8})
+    send_data({"kind":"light", "key":"CAT", "value":600})
+
+    send_data({"kind":"temparature", "key":"CAT", "value":0})
+    send_data({"kind":"co2", "key":"CAT", "value":1})
+    send_data({"kind":"tvoc", "key":"CAT", "value":5})
+    send_data({"kind":"co2", "key":"CAT", "value":8})
+    send_data({"kind":"light", "key":"CAT", "value":600})
+    send_data({"kind":"temparature", "key":"CAT", "value":0})
+    send_data({"kind":"co2", "key":"CAT", "value":1})
+    send_data({"kind":"tvoc", "key":"CAT", "value":5})
+    send_data({"kind":"co2", "key":"CAT", "value":8})
+    send_data({"kind":"light", "key":"CAT", "value":600})

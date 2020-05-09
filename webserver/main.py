@@ -5,6 +5,7 @@ from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 from flask_bootstrap import Bootstrap
 
+
 eventlet.monkey_patch()
 
 app = Flask(__name__)
@@ -22,6 +23,16 @@ socketio = SocketIO(app)
 bootstrap = Bootstrap(app)
 
 data_from_mq   = ""
+import requests
+
+"""
+Configure credentials BIG TODO into ENV FILE
+"""
+influx_cloud_url = "titkos"
+influx_cloud_token = "titkos"
+bucket = 'mybucket'
+org = '18d7dd6618fbcd6d'
+
 
 @app.route('/')
 def index():
@@ -34,14 +45,13 @@ def mqtt_latest():
 
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
-    print(message)
-    print(message.payload.decode())
-    global data_from_mq 
     data_from_mq = message.payload.decode()
-    data = dict(
-        topic=message.topic,
-        payload=message.payload.decode()
-    )
+    data_dict = json.loads(data_from_mq)
+    payload_for_influx = '{}/api/v2/write?org={}&bucket={}&precision=s'.format(influx_cloud_url, org,bucket)
+    header = "--headers Authorization: Token {}".format(influx_cloud_token)
+    data = '--data-raw mem,host=host1 temperature={} {}'.format(data_dict['temperature'], 83)
+    requests.post(payload_for_influx+header+data)
+    print(data_dict)
 
 
 @mqtt.on_log()
@@ -50,5 +60,5 @@ def handle_logging(client, userdata, level, buf):
 
 
 if __name__ == '__main__':
-    mqtt.subscribe("topic/bettair")
+    mqtt.subscribe("/topic/bettair")
     socketio.run(app, host='0.0.0.0', port=5000, use_reloader=False, debug=True)
